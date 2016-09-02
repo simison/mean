@@ -1,6 +1,8 @@
 (function (window) {
   'use strict';
 
+  var angular = require('angular');
+
   var applicationModuleName = 'mean';
 
   var service = {

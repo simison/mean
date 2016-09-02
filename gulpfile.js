@@ -17,7 +17,6 @@ var _ = require('lodash'),
     }
   }),
   pngquant = require('imagemin-pngquant'),
-  wiredep = require('wiredep').stream,
   path = require('path'),
   endOfLine = require('os').EOL,
   protractor = require('gulp-protractor').protractor,
@@ -27,6 +26,12 @@ var _ = require('lodash'),
 
 // Local settings
 var changedTestFiles = [];
+
+// Define file path variables
+var paths = {
+  dist: 'public/dist/', // Distribution path
+  modules: 'modules/'
+};
 
 // Set NODE_ENV to 'test'
 gulp.task('env:test', function () {
@@ -167,16 +172,26 @@ gulp.task('uglify', function () {
     .pipe(plugins.uglify({
       mangle: false
     }))
-    .pipe(plugins.concat('application.min.js'))
-    .pipe(gulp.dest('public/dist'));
+    .pipe(plugins.concat('app.min.js'))
+    .pipe(gulp.dest(paths.dist));
+});
+
+gulp.task('browserify', function () {
+  return gulp.src('modules/core/client/app/app.js')
+    .pipe(plugins.browserify({
+      insertGlobals: true,
+      debug: !process.env.NODE_ENV
+    }))
+    // .pipe(plugins.rename('app.js'))
+    .pipe(gulp.dest(paths.dist));
 });
 
 // CSS minifying task
 gulp.task('cssmin', function () {
   return gulp.src(defaultAssets.client.css)
     .pipe(plugins.csso())
-    .pipe(plugins.concat('application.min.css'))
-    .pipe(gulp.dest('public/dist'));
+    .pipe(plugins.concat('app.min.css'))
+    .pipe(gulp.dest(paths.dist));
 });
 
 // Sass task
@@ -187,7 +202,7 @@ gulp.task('sass', function () {
     .pipe(plugins.rename(function (file) {
       file.dirname = file.dirname.replace(path.sep + 'scss', path.sep + 'css');
     }))
-    .pipe(gulp.dest('./modules/'));
+    .pipe(gulp.dest(paths.modules));
 });
 
 // Less task
@@ -198,7 +213,7 @@ gulp.task('less', function () {
     .pipe(plugins.rename(function (file) {
       file.dirname = file.dirname.replace(path.sep + 'less', path.sep + 'css');
     }))
-    .pipe(gulp.dest('./modules/'));
+    .pipe(gulp.dest(paths.modules));
 });
 
 // Imagemin task
@@ -209,49 +224,7 @@ gulp.task('imagemin', function () {
       svgoPlugins: [{ removeViewBox: false }],
       use: [pngquant()]
     }))
-    .pipe(gulp.dest('public/dist/img'));
-});
-
-// wiredep task to default
-gulp.task('wiredep', function () {
-  return gulp.src('config/assets/default.js')
-    .pipe(wiredep({
-      ignorePath: '../../'
-    }))
-    .pipe(gulp.dest('config/assets/'));
-});
-
-// wiredep task to production
-gulp.task('wiredep:prod', function () {
-  return gulp.src('config/assets/production.js')
-    .pipe(wiredep({
-      ignorePath: '../../',
-      fileTypes: {
-        js: {
-          replace: {
-            css: function (filePath) {
-              var minFilePath = filePath.replace('.css', '.min.css');
-              var fullPath = path.join(process.cwd(), minFilePath);
-              if (!fs.existsSync(fullPath)) {
-                return '\'' + filePath + '\',';
-              } else {
-                return '\'' + minFilePath + '\',';
-              }
-            },
-            js: function (filePath) {
-              var minFilePath = filePath.replace('.js', '.min.js');
-              var fullPath = path.join(process.cwd(), minFilePath);
-              if (!fs.existsSync(fullPath)) {
-                return '\'' + filePath + '\',';
-              } else {
-                return '\'' + minFilePath + '\',';
-              }
-            }
-          }
-        }
-      }
-    }))
-    .pipe(gulp.dest('config/assets/'));
+    .pipe(gulp.dest(paths.dist + '/img'));
 });
 
 // Copy local development environment config example
@@ -282,7 +255,7 @@ gulp.task('makeUploadsDir', function () {
 gulp.task('templatecache', function () {
   return gulp.src(defaultAssets.client.views)
     .pipe(plugins.templateCache('templates.js', {
-      root: 'modules/',
+      root: paths.modules,
       module: 'core',
       templateHeader: '(function () {' + endOfLine + '	\'use strict\';' + endOfLine + endOfLine + '	angular' + endOfLine + '		.module(\'<%= module %>\'<%= standalone %>)' + endOfLine + '		.run(templates);' + endOfLine + endOfLine + '	templates.$inject = [\'$templateCache\'];' + endOfLine + endOfLine + '	function templates($templateCache) {' + endOfLine,
       templateBody: '		$templateCache.put(\'<%= url %>\', \'<%= contents %>\');',
@@ -372,14 +345,19 @@ gulp.task('protractor', ['webdriver_update'], function () {
     });
 });
 
-// Lint CSS and JavaScript files.
+// Process JavaScript files
+gulp.task('scripts', function (done) {
+  runSequence('browserify', done);
+});
+
+// Lint CSS and JavaScript files
 gulp.task('lint', function (done) {
   runSequence('less', 'sass', ['csslint', 'eslint'], done);
 });
 
-// Lint project files and minify them into two production files.
+// Lint project files and minify them into two production files
 gulp.task('build', function (done) {
-  runSequence('env:dev', 'wiredep:prod', 'lint', ['uglify', 'cssmin'], done);
+  runSequence('env:dev', 'lint', 'scripts', ['uglify', 'cssmin'], done);
 });
 
 // Run the project tests
@@ -406,7 +384,7 @@ gulp.task('test:e2e', function (done) {
 
 // Run the project in development mode
 gulp.task('default', function (done) {
-  runSequence('env:dev', ['copyLocalEnvConfig', 'makeUploadsDir'], 'lint', ['nodemon', 'watch'], done);
+  runSequence('env:dev', ['copyLocalEnvConfig', 'makeUploadsDir'], 'lint', 'browserify', ['nodemon', 'watch'], done);
 });
 
 // Run the project in debug mode

@@ -6,13 +6,13 @@ module.exports = {
   client: {
     lib: {
       css: [
-        // bower:css
         'public/lib/bootstrap/dist/css/bootstrap.css',
         'public/lib/bootstrap/dist/css/bootstrap-theme.css',
         'public/lib/ng-img-crop/compile/unminified/ng-img-crop.css'
-        // endbower
       ],
-      js: [
+      js: [],
+      /*
+      [
         // bower:js
         'public/lib/angular/angular.js',
         'public/lib/angular-animate/angular-animate.js',
@@ -26,6 +26,7 @@ module.exports = {
         'public/lib/owasp-password-strength-test/owasp-password-strength-test.js',
         // endbower
       ],
+      */
       tests: ['public/lib/angular-mocks/angular-mocks.js']
     },
     css: [

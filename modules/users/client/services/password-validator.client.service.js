@@ -6,10 +6,10 @@
     .module('users.services')
     .factory('PasswordValidator', PasswordValidator);
 
-  PasswordValidator.$inject = ['$window'];
+  function PasswordValidator() {
 
-  function PasswordValidator($window) {
-    var owaspPasswordStrengthTest = $window.owaspPasswordStrengthTest;
+    var owaspPasswordStrengthTest = require('owasp-password-strength-test');
+    // var owaspPasswordStrengthTest = $window.owaspPasswordStrengthTest;
 
     var service = {
       getResult: getResult,
